@@ -1,2 +1,2 @@
-# Project
-Project for Yandex number 2.
+# Остров сокровищ
+Вы будете
