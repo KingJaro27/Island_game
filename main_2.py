@@ -9,6 +9,7 @@ pygame.init()
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
 
+
 def load_image(name, colorkey=None):
     try:
         image = pygame.image.load(name)
@@ -24,6 +25,7 @@ def load_image(name, colorkey=None):
         image = image.convert_alpha()
     return image
 
+
 def load_level(filename):
     filename = "maps/" + filename
     with open(filename, "r") as mapFile:
@@ -31,15 +33,27 @@ def load_level(filename):
     max_width = max(map(len, level_map))
     return list(map(lambda x: x.ljust(max_width, "."), level_map))
 
+
 def terminate():
     pygame.quit()
     exit()
 
+
 tile_images = {
-    "rocks": pygame.transform.scale(load_image("data/Rock.png"), (TILE_SIZE, TILE_SIZE)),
-    "water": pygame.transform.scale(load_image("data/Water.png"), (TILE_SIZE, TILE_SIZE)),
+    "rocks": pygame.transform.scale(
+        load_image("data/Rock.png"), (TILE_SIZE, TILE_SIZE)
+    ),
+    "water": pygame.transform.scale(
+        load_image("data/Water.png"), (TILE_SIZE, TILE_SIZE)
+    ),
+    "island": pygame.transform.scale(
+        load_image("data/Island.png"), (TILE_SIZE, TILE_SIZE)
+    ),
 }
-player_image = pygame.transform.scale(load_image("data/Ship.png"), (TILE_SIZE, TILE_SIZE))
+player_image = pygame.transform.scale(
+    load_image("data/Ship.png"), (TILE_SIZE, TILE_SIZE)
+)
+
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
@@ -49,12 +63,13 @@ class Tile(pygame.sprite.Sprite):
         if tile_type == "rocks":
             rocks_group.add(self)
 
+
 class Player(pygame.sprite.Sprite):
     def __init__(self, pos_x, pos_y):
         super().__init__(player_group, all_sprites)
         self.image = player_image
-        self.rect = self.image.get_rect().move(TILE_SIZE * pos_x, TILE_SIZE * pos_y -7)
-    
+        self.rect = self.image.get_rect().move(TILE_SIZE * pos_x, TILE_SIZE * pos_y - 7)
+
     def update(self, dx, dy):
         new_x = self.rect.x + dx * TILE_SIZE
         new_y = self.rect.y + dy * TILE_SIZE
@@ -62,22 +77,27 @@ class Player(pygame.sprite.Sprite):
         # if 0 <= new_x < WIDTH - TILE_SIZE and 0 <= new_y < HEIGHT - TILE_SIZE:
         #     new_rect = pygame.Rect(new_x, new_y, TILE_SIZE, TILE_SIZE)
 
-        if not any(tile.rect.colliderect(new_x, new_y, TILE_SIZE, TILE_SIZE) for tile in rocks_group):
+        if not any(
+            tile.rect.colliderect(new_x, new_y, TILE_SIZE, TILE_SIZE)
+            for tile in rocks_group
+        ):
             self.rect.x = new_x
             self.rect.y = new_y
-        
+
         tile_x = new_x // TILE_SIZE
         tile_y = new_y // TILE_SIZE
         if 0 <= tile_y < len(level) and 0 <= tile_x < len(level[tile_y]):
-                if level[tile_y][tile_x] == "*":
-                    show_transition_image()
-                    start_level_2()
+            if level[tile_y][tile_x] == "*":
+                show_transition_image()
+                start_level_2()
+
 
 player = None
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 rocks_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
+
 
 def generate_level(level):
     new_player, x, y = None, None, None
@@ -89,13 +109,14 @@ def generate_level(level):
                 Tile("rocks", x, y)
             elif level[y][x] == "@":
                 Tile("water", x, y)
-                new_player = Player(x, y+0.5)
+                new_player = Player(x, y + 0.5)
             elif level[y][x] == "*":
-                Tile("water", x, y)
+                Tile("island", x, y)
     return new_player, x, y
 
 
 def show_transition_image():
+    screen = pygame.display.set_mode((800, 550))
     transition_image = pygame.transform.scale(
         load_image("data/Background/Island.png"), (800, 550)
     )
@@ -107,9 +128,10 @@ def show_transition_image():
 def start_level_2():
     pygame.quit()
     import main_3
-    
-    main_3.main() 
-    
+
+    main_3.main()
+
+
 def main():
     global player, level
     level = load_level("map1.txt")
@@ -135,5 +157,6 @@ def main():
         player_group.draw(screen)
         pygame.display.flip()
         clock.tick(FPS)
+
 
 main()

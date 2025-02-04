@@ -109,14 +109,14 @@ def options_screen():
     }
 
     key_descriptions = {
-        "W": "Move Up",
-        "A": "Move Left",
-        "S": "Move Down",
-        "D": "Move Right",
-        "SHIFT": "Run (Hold)",
-        "ESC": "Close",
-        "E": "Interact/Trade",
-        "LMB": "Attack",
+        "W": "Движение вверх",
+        "A": "Движение влево",
+        "S": "Движение вниз",
+        "D": "Движение вправо",
+        "SHIFT": "Бежать (удерживайте)",
+        "ESC": "Закрыть",
+        "E": "Взаимодействовать/Торговля",
+        "LMB": "Атака",
     }
 
     key_positions = {
@@ -147,7 +147,7 @@ def options_screen():
         mouse_pressed = pygame.mouse.get_pressed()
 
         if mouse_pressed[0] and back_rect.collidepoint(mouse_x, mouse_y):
-            start_screen() 
+            start_screen()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -159,12 +159,10 @@ def options_screen():
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(tiles_group, all_sprites)
-        if tile_type == "N": 
-            self.image = pygame.Surface(
-                (TILE_SIZE, TILE_SIZE), pygame.SRCALPHA
-            ) 
+        if tile_type == "N":
+            self.image = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
             self.rect = self.image.get_rect().move(TILE_SIZE * pos_x, TILE_SIZE * pos_y)
-            wall_group.add(self) 
+            wall_group.add(self)
         else:
             self.image = tile_images[tile_type]
             self.rect = self.image.get_rect().move(TILE_SIZE * pos_x, TILE_SIZE * pos_y)
@@ -307,7 +305,7 @@ class Player(pygame.sprite.Sprite):
         if self.dead_animation_frame >= len(self.dead_images):
             self.dead_animation_frame = len(self.dead_images) - 1
             pygame.time.wait(2000)
-            game_over_screen() 
+            game_over_screen()
         self.image = self.dead_images[int(self.dead_animation_frame)]
 
     def take_damage(self, amount):
@@ -316,9 +314,8 @@ class Player(pygame.sprite.Sprite):
             self.is_hurt = True
             self.hurt_frame = 0
             if self.health == 0:
-                self.is_dead = True 
+                self.is_dead = True
                 self.dead_animation_frame = 0
-
 
 
 class Coin(pygame.sprite.Sprite):
@@ -580,7 +577,7 @@ camera = Camera()
 
 def draw_coin_counter(screen, player):
     font = pygame.font.Font(None, 36)
-    text = font.render(f"Coins: {player.coins}", True, (255, 255, 255))
+    text = font.render(f"Монет: {player.coins}", True, (255, 255, 255))
     screen.blit(text, (WIDTH - 150, 10))
 
 
@@ -631,9 +628,9 @@ def draw_trade_menu(screen, trader, player):
             if item_pos_y > HEIGHT // 4 - item_spacing and item_pos_y < HEIGHT:
                 screen.blit(trade_images[item], (item_x, item_pos_y))
                 price_text = font.render(
-                    f"Price: {trader.prices[item]}", True, (255, 255, 255)
+                    f"Цена: {trader.prices[item]}", True, (255, 255, 255)
                 )
-                quantity_text = font.render(f"Qty: {quantity}", True, (255, 255, 255))
+                quantity_text = font.render(f"Кол: {quantity}", True, (255, 255, 255))
                 screen.blit(price_text, (item_x + 100, item_pos_y + 10))
                 screen.blit(quantity_text, (item_x + 100, item_pos_y + 40))
                 buy_rect = screen.blit(buy_button, (item_x + 250, item_pos_y + 10))
@@ -653,7 +650,7 @@ def draw_trade_menu(screen, trader, player):
                             start_level_2()
                             return
                     else:
-                        show_message(screen, "Not enough coins!")
+                        show_message(screen, "Недостаточно монет!")
                         return
 
                 if mouse_pressed[0] and sell_rect.collidepoint(mouse_pos):
@@ -663,7 +660,7 @@ def draw_trade_menu(screen, trader, player):
                         trader.inventory[item] += 1
                         pygame.time.wait(200)
                     else:
-                        show_message(screen, "You don't have this item!")
+                        show_message(screen, "У вас нет этого предмета!")
                         return
 
 
@@ -749,7 +746,7 @@ def game_over_screen():
         mouse_pressed = pygame.mouse.get_pressed()
 
         if mouse_pressed[0] and restart_rect.collidepoint(mouse_x, mouse_y):
-            start_screen() 
+            start_screen()
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -768,9 +765,7 @@ def game_loop():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN:
-                if (
-                    event.key == pygame.K_e and not player.is_dead
-                ):
+                if event.key == pygame.K_e and not player.is_dead:
                     for trader in traider_group:
                         distance_to_player = (
                             (trader.rect.x - player.rect.x) ** 2
@@ -779,15 +774,13 @@ def game_loop():
                         if distance_to_player < TILE_SIZE:
                             trader.start_dialog()
                             player.can_move = False
-                elif (
-                    event.key == pygame.K_ESCAPE and not player.is_dead
-                ):
+                elif event.key == pygame.K_ESCAPE and not player.is_dead:
                     for trader in traider_group:
                         if trader.in_dialog:
                             trader.end_dialog()
                             player.can_move = True
 
-        if not player.is_dead: 
+        if not player.is_dead:
             is_shift_pressed = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
             is_moving = (
                 keys[pygame.K_w]

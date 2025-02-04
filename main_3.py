@@ -151,9 +151,14 @@ class Player(pygame.sprite.Sprite):
         self.animate()
 
     def check_attack(self):
-        for enemy in enemy_group:
-            if self.rect.colliderect(enemy.rect.inflate(TILE_SIZE, TILE_SIZE)):
-                enemy.take_damage(1)
+        if boss_level:
+            for boss in boss_group:
+                if self.rect.colliderect(boss.rect.inflate(TILE_SIZE, TILE_SIZE)):
+                    boss.take_damage(1)
+        else:
+            for enemy in enemy_group:
+                if self.rect.colliderect(enemy.rect.inflate(TILE_SIZE, TILE_SIZE)):
+                    enemy.take_damage(1)
 
     def animate(self):
         if self.current_animation == "idle":
@@ -224,6 +229,7 @@ class Enemy1(pygame.sprite.Sprite):
         self.current_animation = "idle"
         self.animation_frame = 0
         self.animation_speed = 0.25
+        self.attack_animation_speed = 0.05
         self.attack_cooldown = 0
         self.is_attacking = False
         self.is_dead = False
@@ -232,6 +238,7 @@ class Enemy1(pygame.sprite.Sprite):
 
     def update(self, player):
         if self.is_dead:
+            self.play_dead_animation()
             self.death_timer += 1 / FPS
             if self.death_timer >= 2:
                 self.kill()
@@ -245,6 +252,7 @@ class Enemy1(pygame.sprite.Sprite):
             self.move_towards_player(player)
             if distance_to_player < TILE_SIZE:
                 self.attack(player)
+                self.animate()
         else:
             self.idle()
 
@@ -254,8 +262,15 @@ class Enemy1(pygame.sprite.Sprite):
         dx = player.rect.x - self.rect.x
         dy = player.rect.y - self.rect.y
         distance = max(1, (dx**2 + dy**2) ** 0.5)
-        self.rect.x += (dx / distance) * SPEED * TILE_SIZE
-        self.rect.y += (dy / distance) * SPEED * TILE_SIZE
+        new_x = self.rect.x + (dx / distance) * SPEED * TILE_SIZE
+        new_y = self.rect.y + (dy / distance) * SPEED * TILE_SIZE
+
+        if not any(
+            tile.rect.collidepoint(new_x + 70, new_y + 120) for tile in wall_group
+        ):
+            self.rect.x = new_x
+            self.rect.y = new_y
+
         self.current_animation = "run"
 
         if dx > 0:
@@ -278,13 +293,6 @@ class Enemy1(pygame.sprite.Sprite):
             self.attack_cooldown -= 1
 
     def animate(self):
-        if self.is_dead:
-            self.animation_frame = (
-                self.animation_frame + self.animation_speed - 0.2
-            ) % len(self.dead_images)
-
-            self.image = self.dead_images[int(self.animation_frame)]
-            return
 
         if self.current_animation == "idle":
             self.animation_frame = (self.animation_frame + self.animation_speed) % len(
@@ -297,16 +305,21 @@ class Enemy1(pygame.sprite.Sprite):
             )
             self.image = self.run_images[int(self.animation_frame)]
         elif self.current_animation == "attack":
-            self.animation_frame = (self.animation_frame + self.animation_speed) % len(
-                self.attack_images
-            )
-            self.image = self.attack_images[int(self.animation_frame)]
-            if self.animation_frame >= len(self.attack_images) - 1:
+            self.animation_frame += self.attack_animation_speed
+            if self.animation_frame >= len(self.attack_images):
+                self.animation_frame = 0
                 self.is_attacking = False
                 self.current_animation = "idle"
+            self.image = self.attack_images[int(self.animation_frame)]
 
         if not self.facing_right:
             self.image = pygame.transform.flip(self.image, True, False)
+
+    def play_dead_animation(self):
+        self.animation_frame += self.animation_speed
+        if self.animation_frame >= len(self.dead_images):
+            self.animation_frame = len(self.dead_images) - 1
+        self.image = self.dead_images[int(self.animation_frame)]
 
     def take_damage(self, amount):
         self.health -= amount
@@ -317,7 +330,7 @@ class Enemy1(pygame.sprite.Sprite):
         self.is_dead = True
         self.current_animation = "dead"
         self.animation_frame = 0
-        self.animate()
+        self.update(self)
 
 
 class Enemy2(pygame.sprite.Sprite):
@@ -335,7 +348,8 @@ class Enemy2(pygame.sprite.Sprite):
         self.health = 2
         self.current_animation = "idle"
         self.animation_frame = 0
-        self.animation_speed = 0.25
+        self.animation_speed = 0.2
+        self.attack_animation_speed = 0.05
         self.attack_cooldown = 0
         self.is_attacking = False
         self.is_dead = False
@@ -344,6 +358,7 @@ class Enemy2(pygame.sprite.Sprite):
 
     def update(self, player):
         if self.is_dead:
+            self.play_dead_animation()
             self.death_timer += 1 / FPS
             if self.death_timer >= 2:
                 self.kill()
@@ -357,6 +372,7 @@ class Enemy2(pygame.sprite.Sprite):
             self.move_towards_player(player)
             if distance_to_player < TILE_SIZE:
                 self.attack(player)
+                self.animate()
         else:
             self.idle()
 
@@ -366,8 +382,15 @@ class Enemy2(pygame.sprite.Sprite):
         dx = player.rect.x - self.rect.x
         dy = player.rect.y - self.rect.y
         distance = max(1, (dx**2 + dy**2) ** 0.5)
-        self.rect.x += (dx / distance) * SPEED * TILE_SIZE
-        self.rect.y += (dy / distance) * SPEED * TILE_SIZE
+        new_x = self.rect.x + (dx / distance) * SPEED * TILE_SIZE
+        new_y = self.rect.y + (dy / distance) * SPEED * TILE_SIZE
+
+        if not any(
+            tile.rect.collidepoint(new_x + 70, new_y + 120) for tile in wall_group
+        ):
+            self.rect.x = new_x
+            self.rect.y = new_y
+
         self.current_animation = "run"
 
         if dx > 0:
@@ -385,41 +408,38 @@ class Enemy2(pygame.sprite.Sprite):
             self.current_animation = "attack"
             self.animation_frame = 0
             if self.rect.colliderect(player.rect.inflate(TILE_SIZE, TILE_SIZE)):
-                self.animate()
                 player.take_damage(3)
         else:
             self.attack_cooldown -= 1
 
     def animate(self):
-        if self.is_dead:
-            self.animation_frame = min(
-                self.animation_frame + self.animation_speed, len(self.dead_images) - 1
-            )
-            self.image = self.dead_images[int(self.animation_frame)]
-            return
 
         if self.current_animation == "idle":
             self.animation_frame = (self.animation_frame + self.animation_speed) % len(
                 self.idle_images
             )
             self.image = self.idle_images[int(self.animation_frame)]
-
         elif self.current_animation == "run":
             self.animation_frame = (self.animation_frame + self.animation_speed) % len(
                 self.run_images
             )
             self.image = self.run_images[int(self.animation_frame)]
         elif self.current_animation == "attack":
-            self.animation_frame = (self.animation_frame + self.animation_speed) % len(
-                self.attack_images
-            )
-            self.image = self.attack_images[int(self.animation_frame)]
-            if self.animation_frame >= len(self.attack_images) - 1:
+            self.animation_frame += self.attack_animation_speed
+            if self.animation_frame >= len(self.attack_images):
+                self.animation_frame = 0
                 self.is_attacking = False
                 self.current_animation = "idle"
+            self.image = self.attack_images[int(self.animation_frame)]
 
         if not self.facing_right:
             self.image = pygame.transform.flip(self.image, True, False)
+
+    def play_dead_animation(self):
+        self.animation_frame += self.animation_speed
+        if self.animation_frame >= len(self.dead_images):
+            self.animation_frame = len(self.dead_images) - 1
+        self.image = self.dead_images[int(self.animation_frame)]
 
     def take_damage(self, amount):
         self.health -= amount
@@ -430,7 +450,7 @@ class Enemy2(pygame.sprite.Sprite):
         self.is_dead = True
         self.current_animation = "dead"
         self.animation_frame = 0
-        self.animate()
+        self.update(self)
 
 
 class Key(pygame.sprite.Sprite):
@@ -487,7 +507,7 @@ class Boss(pygame.sprite.Sprite):
         self.dead_images = [load_image(f"data/Boss/Dead/{i}.png") for i in range(4)]
         self.image = self.idle_images[0]
         self.rect = self.image.get_rect().move(TILE_SIZE * pos_x, TILE_SIZE * pos_y)
-        self.health = 20
+        self.health = 2
         self.current_animation = "idle"
         self.animation_frame = 0
         self.animation_speed = 0.25
@@ -499,6 +519,7 @@ class Boss(pygame.sprite.Sprite):
 
     def update(self, player):
         if self.is_dead:
+            self.play_dead_animation()
             self.death_timer += 1 / FPS
             if self.death_timer >= 4:
                 self.kill()
@@ -544,14 +565,14 @@ class Boss(pygame.sprite.Sprite):
             self.attack_cooldown -= 1
 
     def animate(self):
-        if self.is_dead:
+        if self.current_animation == "dead":
             self.animation_frame = (self.animation_frame + self.animation_speed) % len(
                 self.dead_images
             )
             self.image = self.dead_images[int(self.animation_frame)]
-            return
+            # return
 
-        if self.current_animation == "idle":
+        elif self.current_animation == "idle":
             self.animation_frame = (self.animation_frame + self.animation_speed) % len(
                 self.idle_images
             )
@@ -576,9 +597,17 @@ class Boss(pygame.sprite.Sprite):
         if not self.facing_right:
             self.image = pygame.transform.flip(self.image, True, False)
 
+    def play_dead_animation(self):
+        self.dead_animation_frame += self.animation_speed - 0.2
+        if self.dead_animation_frame >= len(self.dead_images):
+            self.dead_animation_frame = len(self.dead_images) - 1
+            self.die()
+        self.image = self.dead_images[int(self.dead_animation_frame)]
+
     def take_damage(self, amount):
         self.health -= amount
         if self.health <= 0:
+            self.dead_animation_frame = len(self.dead_images) - 1
             self.die()
 
     def die(self):
@@ -606,6 +635,8 @@ def load_boss_level(filename):
 
 
 def generate_boss_level(level):
+    global boss_level
+    boss_level = True
     new_player = None
     new_boss = None
     for y in range(len(level)):
@@ -672,8 +703,6 @@ def start_boss_level():
                 player.update(-current_speed, 0, is_running, is_attacking)
             elif keys[pygame.K_d]:
                 player.update(current_speed, 0, is_running, is_attacking)
-            elif keys[pygame.K_h]:
-                player.take_damage(3)  # Testen des Schadenssystems
             else:
                 player.update(0, 0, is_running, is_attacking)
         else:
@@ -794,6 +823,8 @@ def generate_level(level):
 
 
 def game_loop():
+    global boss_level
+    boss_level = False
     player = generate_level(load_level("map.txt"))
     camera = Camera()
     running = True
@@ -826,8 +857,6 @@ def game_loop():
                 player.update(-current_speed, 0, is_running, is_attacking)
             elif keys[pygame.K_d]:
                 player.update(current_speed, 0, is_running, is_attacking)
-            elif keys[pygame.K_h]:
-                player.take_damage(3)  # Testen des Schadenssystems
             else:
                 player.update(0, 0, is_running, is_attacking)
         else:
@@ -863,4 +892,5 @@ def game_loop():
         clock.tick(FPS)
 
 
+# start_boss_level()
 game_loop()
