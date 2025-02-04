@@ -200,6 +200,8 @@ class Player(pygame.sprite.Sprite):
         self.walk_images = [load_image(f"data/Hero/Walk/{i}.png") for i in range(10)]
         self.run_images = [load_image(f"data/Hero/Run/{i}.png") for i in range(10)]
         self.attack_images = [load_image(f"data/Hero/Attack/{i}.png") for i in range(4)]
+        self.hurt_images = [load_image(f"data/Hero/Hurt/{i}.png") for i in range(3)]
+        self.dead_images = [load_image(f"data/Hero/Dead/{i}.png") for i in range(5)]
         self.rect = self.image.get_rect().move(
             TILE_SIZE * pos_x + 15, TILE_SIZE * pos_y + 5
         )
@@ -212,49 +214,78 @@ class Player(pygame.sprite.Sprite):
         self.can_move = True
         self.coins = 0
         self.inventory = {}
+        self.health = 15
+        self.is_hurt = False
+        self.hurt_frame = 0
+        self.hurt_duration = 0.5
+        self.hurt_timer = 0
+        self.is_dead = False
+        self.dead_animation_frame = 0
+        self.dead_animation_speed = 0.25
 
     def update(self, dx, dy, is_running, is_attacking):
-        if not self.can_move:
+        if self.is_dead:
+            self.play_dead_animation()
             return
 
-        new_x = self.rect.x + dx * TILE_SIZE
-        new_y = self.rect.y + dy * TILE_SIZE
+        if self.health <= 0 and not self.is_dead:
+            self.is_dead = True
+            self.dead_animation_frame = 0  # Starte die Todesanimation
+            return
+        if not self.can_move:
+            return
+        if self.is_dead:
+            self.play_dead_animation()
+            return
 
-        # Berechne die Grenzen der Karte basierend auf der Level-Datei
-        level_width = len(load_level("map1.txt")[0]) * TILE_SIZE
-        level_height = len(load_level("map1.txt")) * TILE_SIZE
-
-        # Überprüfen, ob die neue Position innerhalb der Karte liegt
-        if (
-            0 <= new_x <= level_width - TILE_SIZE
-            and 0 <= new_y <= level_height - TILE_SIZE
-        ):
-            if not any(
-                tile.rect.collidepoint(new_x + 70, new_y + 120) for tile in wall_group
-            ):
-                self.rect.x = new_x
-                self.rect.y = new_y
-
-        if dx < 0:
-            self.facing_right = False
-        elif dx > 0:
-            self.facing_right = True
-
-        if is_attacking and not self.mouse_was_pressed and not self.attack_in_progress:
-            self.current_animation = "attack"
-            self.animation_frame = 0
-            self.attack_in_progress = True
-
-        self.mouse_was_pressed = is_attacking
-
-        if self.attack_in_progress:
-            self.current_animation = "attack"
-        elif is_running:
-            self.current_animation = "run"
-        elif dx != 0 or dy != 0:
-            self.current_animation = "walk"
+        if self.is_hurt:
+            self.hurt_timer += 1 / FPS
+            if self.hurt_timer >= self.hurt_duration:
+                self.is_hurt = False
+                self.hurt_timer = 0
+            self.current_animation = "hurt"
         else:
-            self.current_animation = "idle"
+            new_x = self.rect.x + dx * TILE_SIZE
+            new_y = self.rect.y + dy * TILE_SIZE
+
+            level_width = len(load_level("map1.txt")[0]) * TILE_SIZE
+            level_height = len(load_level("map1.txt")) * TILE_SIZE
+
+            if (
+                0 <= new_x <= level_width - TILE_SIZE
+                and 0 <= new_y <= level_height - TILE_SIZE
+            ):
+                if not any(
+                    tile.rect.collidepoint(new_x + 70, new_y + 120)
+                    for tile in wall_group
+                ):
+                    self.rect.x = new_x
+                    self.rect.y = new_y
+
+            if dx < 0:
+                self.facing_right = False
+            elif dx > 0:
+                self.facing_right = True
+
+            if (
+                is_attacking
+                and not self.mouse_was_pressed
+                and not self.attack_in_progress
+            ):
+                self.current_animation = "attack"
+                self.animation_frame = 0
+                self.attack_in_progress = True
+
+            self.mouse_was_pressed = is_attacking
+
+            if self.attack_in_progress:
+                self.current_animation = "attack"
+            elif is_running:
+                self.current_animation = "run"
+            elif dx != 0 or dy != 0:
+                self.current_animation = "walk"
+            else:
+                self.current_animation = "idle"
 
         self.animate()
 
@@ -280,9 +311,33 @@ class Player(pygame.sprite.Sprite):
                 self.animation_frame = 0
                 self.attack_in_progress = False
             self.image = self.attack_images[int(self.animation_frame)]
+        elif self.current_animation == "hurt":
+            self.animation_frame += self.animation_speed
+            if self.animation_frame >= len(self.hurt_images):
+                self.animation_frame = 0
+            self.image = self.hurt_images[int(self.animation_frame)]
 
         if not self.facing_right:
             self.image = pygame.transform.flip(self.image, True, False)
+
+    def play_dead_animation(self):
+        self.dead_animation_frame += self.dead_animation_speed
+        if self.dead_animation_frame >= len(self.dead_images):
+            self.dead_animation_frame = len(self.dead_images) - 1
+            # Warte 2 Sekunden, bevor der Game-Over-Bildschirm angezeigt wird
+            pygame.time.wait(2000)
+            game_over_screen()  # Zeige den Game-Over-Bildschirm
+        self.image = self.dead_images[int(self.dead_animation_frame)]
+
+    def take_damage(self, amount):
+        if not self.is_hurt and not self.is_dead:
+            self.health = max(0, self.health - amount)
+            self.is_hurt = True
+            self.hurt_frame = 0
+            if self.health == 0:
+                self.is_dead = True 
+                self.dead_animation_frame = 0
+
 
 
 class Coin(pygame.sprite.Sprite):
@@ -478,7 +533,7 @@ class Traider(pygame.sprite.Sprite):
     def end_dialog(self):
         self.in_dialog = False
         self.current_animation = "idle2"
-        self.scroll_y = 0  # Scroll-Position zurücksetzen
+        self.scroll_y = 0
 
 
 player = None
@@ -515,8 +570,8 @@ def generate_level(level):
             elif level[y][x] == "C":
                 Tile("way", x, y)
                 Coin(x + 0.4, y + 0.4)
-            elif level[y][x] == "N":  # Unsichtbare Barriere
-                Tile("N", x, y)  # Erstelle ein unsichtbares Tile
+            elif level[y][x] == "N":
+                Tile("N", x, y)
 
     if new_player is None:
         print("Error: No player start point ('#') found in level!")
@@ -575,28 +630,23 @@ def draw_trade_menu(screen, trader, player):
 
     font = pygame.font.Font(None, 36)
 
-    # Mausrad-Scroll-Logik
     for event in pygame.event.get():
         if event.type == pygame.MOUSEBUTTONDOWN:
-            if event.button == 4:  # Mausrad nach oben
+            if event.button == 4:
                 trader.scroll_y += 20
-            elif event.button == 5:  # Mausrad nach unten
+            elif event.button == 5:
                 trader.scroll_y -= 20
 
-    # Begrenze den Scroll-Bereich
     trader.scroll_y = max(
         -(len(trader.inventory) * item_spacing - HEIGHT // 2), min(trader.scroll_y, 0)
     )
 
-    # Zeichne die Scrollbar
     draw_scrollbar(screen, trader, len(trader.inventory), item_spacing)
 
     for i, (item, quantity) in enumerate(trader.inventory.items()):
         if quantity > 0:
-            # Position des Elements basierend auf der Scroll-Position
             item_pos_y = item_y + i * item_spacing + trader.scroll_y
 
-            # Zeichne das Item nur, wenn es im sichtbaren Bereich ist
             if item_pos_y > HEIGHT // 4 - item_spacing and item_pos_y < HEIGHT:
                 screen.blit(trade_images[item], (item_x, item_pos_y))
                 price_text = font.render(
@@ -605,13 +655,9 @@ def draw_trade_menu(screen, trader, player):
                 quantity_text = font.render(f"Qty: {quantity}", True, (255, 255, 255))
                 screen.blit(price_text, (item_x + 100, item_pos_y + 10))
                 screen.blit(quantity_text, (item_x + 100, item_pos_y + 40))
-
-                # Buy-Button
                 buy_rect = screen.blit(buy_button, (item_x + 250, item_pos_y + 10))
-                # Sell-Button
                 sell_rect = screen.blit(sell_button, (item_x + 310, item_pos_y + 10))
 
-                # Überprüfen, ob der Buy-Button geklickt wurde
                 mouse_pos = pygame.mouse.get_pos()
                 mouse_pressed = pygame.mouse.get_pressed()
                 if mouse_pressed[0] and buy_rect.collidepoint(mouse_pos):
@@ -621,7 +667,6 @@ def draw_trade_menu(screen, trader, player):
                         trader.inventory[item] -= 1
                         pygame.time.wait(200)
 
-                        # Überprüfen, ob das Schiff gekauft wurde
                         if item == "Ship":
                             show_transition_image()
                             start_level_2()
@@ -630,39 +675,34 @@ def draw_trade_menu(screen, trader, player):
                         show_message(screen, "Not enough coins!")
                         return
 
-                # Überprüfen, ob der Sell-Button geklickt wurde
                 if mouse_pressed[0] and sell_rect.collidepoint(mouse_pos):
                     if player.inventory.get(item, 0) > 0:
                         player.coins += trader.prices[item]
                         player.inventory[item] -= 1
                         trader.inventory[item] += 1
-                        pygame.time.wait(200)  # Verhindert Mehrfachklicks
+                        pygame.time.wait(200)
                     else:
                         show_message(screen, "You don't have this item!")
                         return
 
 
 def draw_scrollbar(screen, trader, total_items, item_spacing):
-    # Scrollbar-Position und Größe
     scrollbar_width = 10
     scrollbar_x = WIDTH - 50
     scrollbar_height = HEIGHT // 2
     scrollbar_y = HEIGHT // 4
 
-    # Zeichne den Hintergrund der Scrollbar
     pygame.draw.rect(
         screen,
         (100, 100, 100),
         (scrollbar_x, scrollbar_y, scrollbar_width, scrollbar_height),
     )
 
-    # Berechne die Position des Scroll-Indikators
     max_scroll = -(total_items * item_spacing - HEIGHT // 2)
     scroll_ratio = trader.scroll_y / max_scroll
     indicator_height = scrollbar_height * (HEIGHT // 2) / (total_items * item_spacing)
     indicator_y = scrollbar_y + scroll_ratio * (scrollbar_height - indicator_height)
 
-    # Zeichne den Scroll-Indikator
     pygame.draw.rect(
         screen,
         (200, 200, 200),
@@ -677,7 +717,21 @@ def show_message(screen, message):
     text_rect = text.get_rect(center=(WIDTH // 2, 50))
     screen.blit(text, text_rect)
     pygame.display.flip()
-    pygame.time.wait(2000)  # Warte 2 Sekunden, bevor die Nachricht verschwindet
+    pygame.time.wait(2000)
+
+
+def draw_hearts(screen, player):
+    heart_images = [
+        pygame.transform.scale(load_image(f"data/Live/{i}.png"), (30, 30))
+        for i in range(6)
+    ]
+    heart_width = heart_images[0].get_width()
+    heart_height = heart_images[0].get_height()
+    x, y = 10, 10
+
+    for i in range(3):
+        heart_state = min(5, max(0, 5 - (player.health - i * 5)))
+        screen.blit(heart_images[heart_state], (x + i * (heart_width + 5), y))
 
 
 def show_transition_image():
@@ -686,14 +740,45 @@ def show_transition_image():
     )
     screen.blit(transition_image, (0, 0))
     pygame.display.flip()
-    pygame.time.wait(5000)  # Warte 5 Sekunden
+    pygame.time.wait(5000)
 
 
 def start_level_2():
-    pygame.quit()  # Beende das aktuelle Spiel
-    import main_2  # Importiere und starte das zweite Level
+    pygame.quit()
+    import main_2
 
-    main_2.main()  # Starte die Hauptfunktion von main_2.py
+    main_2.main()
+
+
+def game_over_screen():
+    bg_image = pygame.transform.scale(
+        load_image("data/Background/Lose.png"), (WIDTH, HEIGHT)
+    )
+    screen.blit(bg_image, (0, 0))
+
+    # Restart-Button laden
+    restart_button = pygame.transform.scale(
+        load_image("data/Buttons/Restart.png"), (150, 60)
+    )
+    restart_rect = restart_button.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+
+    while True:
+        screen.blit(bg_image, (0, 0))
+        screen.blit(restart_button, restart_rect)
+
+        # Mausposition und Klicks überprüfen
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        mouse_pressed = pygame.mouse.get_pressed()
+
+        # Überprüfen, ob der Restart-Button geklickt wurde
+        if mouse_pressed[0] and restart_rect.collidepoint(mouse_x, mouse_y):
+            start_screen()  # Zurück zum Startbildschirm
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+
+        pygame.display.flip()
 
 
 def game_loop():
@@ -706,7 +791,9 @@ def game_loop():
             if event.type == pygame.QUIT:
                 terminate()
             elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_e:
+                if (
+                    event.key == pygame.K_e and not player.is_dead
+                ):  # Nur wenn der Spieler nicht tot ist
                     for trader in traider_group:
                         distance_to_player = (
                             (trader.rect.x - player.rect.x) ** 2
@@ -714,33 +801,42 @@ def game_loop():
                         ) ** 0.5
                         if distance_to_player < TILE_SIZE:
                             trader.start_dialog()
-                            player.can_move = False  # Bewegung blockieren
-                elif event.key == pygame.K_ESCAPE:
+                            player.can_move = False
+                elif (
+                    event.key == pygame.K_ESCAPE and not player.is_dead
+                ):  # Nur wenn der Spieler nicht tot ist
                     for trader in traider_group:
                         if trader.in_dialog:
                             trader.end_dialog()
-                            player.can_move = True  # Bewegung freigeben
+                            player.can_move = True
 
-        is_shift_pressed = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
-        is_moving = (
-            keys[pygame.K_w] or keys[pygame.K_a] or keys[pygame.K_s] or keys[pygame.K_d]
-        )
-        is_running = is_shift_pressed and is_moving
-        is_attacking = mouse_pressed[0]
+        if not player.is_dead:  # Nur wenn der Spieler nicht tot ist
+            is_shift_pressed = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
+            is_moving = (
+                keys[pygame.K_w]
+                or keys[pygame.K_a]
+                or keys[pygame.K_s]
+                or keys[pygame.K_d]
+            )
+            is_running = is_shift_pressed and is_moving
+            is_attacking = mouse_pressed[0]
 
-        current_speed = SPEED * 2 if is_running else SPEED
+            current_speed = SPEED * 2 if is_running else SPEED
 
-        if keys[pygame.K_w]:
-            player.update(0, -current_speed, is_running, is_attacking)
-        elif keys[pygame.K_s]:
-            player.update(0, current_speed, is_running, is_attacking)
-        elif keys[pygame.K_a]:
-            player.update(-current_speed, 0, is_running, is_attacking)
-        elif keys[pygame.K_d]:
-            player.update(current_speed, 0, is_running, is_attacking)
+            if keys[pygame.K_w]:
+                player.update(0, -current_speed, is_running, is_attacking)
+            elif keys[pygame.K_s]:
+                player.update(0, current_speed, is_running, is_attacking)
+            elif keys[pygame.K_a]:
+                player.update(-current_speed, 0, is_running, is_attacking)
+            elif keys[pygame.K_d]:
+                player.update(current_speed, 0, is_running, is_attacking)
+            elif keys[pygame.K_h]:
+                player.take_damage(3)
+            else:
+                player.update(0, 0, is_running, is_attacking)
         else:
-            player.update(0, 0, is_running, is_attacking)
-
+            player.play_dead_animation()
         for trader in traider_group:
             trader.update(player)
 
@@ -748,7 +844,7 @@ def game_loop():
             coin.update()
             if player.rect.colliderect(coin.rect):
                 player.coins += 1
-                coin.kill()  # Münze entfernen
+                coin.kill()
 
         camera.update(player)
 
@@ -763,11 +859,11 @@ def game_loop():
 
         for trader in traider_group:
             trader.draw_e_key(screen)
-            trader.draw_esc_key(screen)  # ESC-Taste anzeigen
+            trader.draw_esc_key(screen)
 
-        draw_coin_counter(screen, player)  # Münzanzeige zeichnen
+        draw_coin_counter(screen, player)
+        draw_hearts(screen, player)
 
-        # Handelsmenü anzeigen, wenn der Spieler mit einem Händler im Dialog ist
         for trader in traider_group:
             if trader.in_dialog:
                 draw_trade_menu(screen, trader, player)
