@@ -233,7 +233,7 @@ class Enemy1(pygame.sprite.Sprite):
     def update(self, player):
         if self.is_dead:
             self.death_timer += 1 / FPS
-            if self.death_timer >= 2: 
+            if self.death_timer >= 2:
                 self.kill()
             return
 
@@ -340,12 +340,12 @@ class Enemy2(pygame.sprite.Sprite):
         self.is_attacking = False
         self.is_dead = False
         self.facing_right = True
-        self.death_timer = 0 
+        self.death_timer = 0
 
     def update(self, player):
         if self.is_dead:
-            self.death_timer += 1 / FPS 
-            if self.death_timer >= 2: 
+            self.death_timer += 1 / FPS
+            if self.death_timer >= 2:
                 self.kill()
             return
 
@@ -385,6 +385,7 @@ class Enemy2(pygame.sprite.Sprite):
             self.current_animation = "attack"
             self.animation_frame = 0
             if self.rect.colliderect(player.rect.inflate(TILE_SIZE, TILE_SIZE)):
+                self.animate()
                 player.take_damage(3)
         else:
             self.attack_cooldown -= 1
@@ -460,6 +461,243 @@ class Camera:
     def update(self, target):
         self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
         self.dy = -(target.rect.y + target.rect.h // 2 - HEIGHT // 2)
+
+
+tile_images["G"] = pygame.transform.scale(
+    load_image("data/Ground.png"), (TILE_SIZE, TILE_SIZE)
+)
+tile_images["B"] = pygame.transform.scale(
+    load_image("data/Ground.png"), (TILE_SIZE, TILE_SIZE)
+)
+tile_images["H"] = pygame.transform.scale(
+    load_image("data/Ground.png"), (TILE_SIZE, TILE_SIZE)
+)
+
+
+class Boss(pygame.sprite.Sprite):
+    def __init__(self, pos_x, pos_y):
+        super().__init__(boss_group, all_sprites)
+        self.idle_images = [load_image(f"data/Boss/Walk/{i}.png") for i in range(7)]
+        self.attack_1_images = [
+            load_image(f"data/Boss/Attack_1/{i}.png") for i in range(6)
+        ]
+        self.attack_2_images = [
+            load_image(f"data/Boss/Attack_2/{i}.png") for i in range(4)
+        ]
+        self.dead_images = [load_image(f"data/Boss/Dead/{i}.png") for i in range(4)]
+        self.image = self.idle_images[0]
+        self.rect = self.image.get_rect().move(TILE_SIZE * pos_x, TILE_SIZE * pos_y)
+        self.health = 20
+        self.current_animation = "idle"
+        self.animation_frame = 0
+        self.animation_speed = 0.25
+        self.attack_cooldown = 0
+        self.is_attacking = False
+        self.is_dead = False
+        self.facing_right = True
+        self.death_timer = 0
+
+    def update(self, player):
+        if self.is_dead:
+            self.death_timer += 1 / FPS
+            if self.death_timer >= 4:
+                self.kill()
+                show_win_screen()
+            return
+
+        distance_to_player = (
+            (self.rect.x - player.rect.x) ** 2 + (self.rect.y - player.rect.y) ** 2
+        ) ** 0.5
+
+        if distance_to_player < TILE_SIZE:
+            self.attack(player)
+        else:
+            self.move_towards_player(player)
+
+        self.animate()
+
+    def move_towards_player(self, player):
+        dx = player.rect.x - self.rect.x
+        dy = player.rect.y - self.rect.y
+        distance = max(1, (dx**2 + dy**2) ** 0.5)
+        self.rect.x += (dx / distance) * SPEED * TILE_SIZE
+        self.rect.y += (dy / distance) * SPEED * TILE_SIZE
+        self.current_animation = "idle"
+
+        if dx > 0:
+            self.facing_right = True
+        else:
+            self.facing_right = False
+
+    def attack(self, player):
+        if self.attack_cooldown <= 0:
+            self.is_attacking = True
+            self.attack_cooldown = 2 * FPS
+            if self.health > 10:
+                self.current_animation = "attack_1"
+                player.take_damage(4)
+            else:
+                self.current_animation = "attack_2"
+                player.take_damage(5)
+            self.animation_frame = 0
+        else:
+            self.attack_cooldown -= 1
+
+    def animate(self):
+        if self.is_dead:
+            self.animation_frame = (self.animation_frame + self.animation_speed) % len(
+                self.dead_images
+            )
+            self.image = self.dead_images[int(self.animation_frame)]
+            return
+
+        if self.current_animation == "idle":
+            self.animation_frame = (self.animation_frame + self.animation_speed) % len(
+                self.idle_images
+            )
+            self.image = self.idle_images[int(self.animation_frame)]
+        elif self.current_animation == "attack_1":
+            self.animation_frame = (self.animation_frame + self.animation_speed) % len(
+                self.attack_1_images
+            )
+            self.image = self.attack_1_images[int(self.animation_frame)]
+            if self.animation_frame >= len(self.attack_1_images) - 1:
+                self.is_attacking = False
+                self.current_animation = "idle"
+        elif self.current_animation == "attack_2":
+            self.animation_frame = (self.animation_frame + self.animation_speed) % len(
+                self.attack_2_images
+            )
+            self.image = self.attack_2_images[int(self.animation_frame)]
+            if self.animation_frame >= len(self.attack_2_images) - 1:
+                self.is_attacking = False
+                self.current_animation = "idle"
+
+        if not self.facing_right:
+            self.image = pygame.transform.flip(self.image, True, False)
+
+    def take_damage(self, amount):
+        self.health -= amount
+        if self.health <= 0:
+            self.die()
+
+    def die(self):
+        self.is_dead = True
+        self.current_animation = "dead"
+        self.animation_frame = 0
+        self.animate()
+
+
+def show_win_screen():
+    bg_image = pygame.transform.scale(
+        load_image("data/Background/Win.png"), (WIDTH, HEIGHT)
+    )
+    screen.blit(bg_image, (0, 0))
+    pygame.display.flip()
+    pygame.time.wait(4000)
+    terminate()
+
+
+def load_boss_level(filename):
+    with open(filename, "r") as mapFile:
+        level_map = [line.strip() for line in mapFile]
+    max_width = max(map(len, level_map))
+    return list(map(lambda x: x.ljust(max_width, "."), level_map))
+
+
+def generate_boss_level(level):
+    new_player = None
+    new_boss = None
+    for y in range(len(level)):
+        for x in range(len(level[y])):
+            if level[y][x] == "H":
+                Tile("G", x, y)
+                new_player = Player(x, y)
+            elif level[y][x] == "B":
+                Tile("G", x, y)
+                new_boss = Boss(x, y)
+            elif level[y][x] == "R":
+                Tile("R", x, y)
+            elif level[y][x] == "G":
+                Tile("G", x, y)
+
+    if new_player is None or new_boss is None:
+        print("Error: No player or boss start point found in boss level!")
+        terminate()
+
+    return new_player, new_boss
+
+
+def start_boss_level():
+    global all_sprites, tiles_group, wall_group, player_group, enemy_group, key_group, door_group, boss_group
+
+    all_sprites.empty()
+    tiles_group.empty()
+    wall_group.empty()
+    player_group.empty()
+    enemy_group.empty()
+    key_group.empty()
+    door_group.empty()
+    boss_group.empty()
+
+    player, boss = generate_boss_level(load_boss_level("bossmap.txt"))
+    camera = Camera()
+    running = True
+    while running:
+        keys = pygame.key.get_pressed()
+        mouse_pressed = pygame.mouse.get_pressed()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+
+        if not player.is_dead:
+            is_shift_pressed = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
+            is_moving = (
+                keys[pygame.K_w]
+                or keys[pygame.K_a]
+                or keys[pygame.K_s]
+                or keys[pygame.K_d]
+            )
+            is_running = is_shift_pressed and is_moving
+            is_attacking = mouse_pressed[0]
+
+            current_speed = SPEED * 2 if is_running else SPEED
+
+            if keys[pygame.K_w]:
+                player.update(0, -current_speed, is_running, is_attacking)
+            elif keys[pygame.K_s]:
+                player.update(0, current_speed, is_running, is_attacking)
+            elif keys[pygame.K_a]:
+                player.update(-current_speed, 0, is_running, is_attacking)
+            elif keys[pygame.K_d]:
+                player.update(current_speed, 0, is_running, is_attacking)
+            elif keys[pygame.K_h]:
+                player.take_damage(3)  # Testen des Schadenssystems
+            else:
+                player.update(0, 0, is_running, is_attacking)
+        else:
+            player.play_dead_animation()
+
+        for boss in boss_group:
+            boss.update(player)
+
+        camera.update(player)
+        for sprite in all_sprites:
+            camera.apply(sprite)
+
+        screen.fill((0, 0, 0))
+        tiles_group.draw(screen)
+        player_group.draw(screen)
+        boss_group.draw(screen)
+
+        draw_hearts(screen, player)
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+boss_group = pygame.sprite.Group()
 
 
 all_sprites = pygame.sprite.Group()
@@ -605,7 +843,8 @@ def game_loop():
 
         for door in door_group:
             if player.rect.colliderect(door.rect) and "Key" in player.inventory:
-                print("Boss Level startet!")
+                start_boss_level()
+                return
 
         camera.update(player)
         for sprite in all_sprites:
