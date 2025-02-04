@@ -41,28 +41,23 @@ def terminate():
     exit()
 
 
-# Funktionen für den Startbildschirm
 def start_screen():
     bg_image = pygame.transform.scale(
         load_image(f"data/Background/{random.randint(1, 8)}.png"), (WIDTH, HEIGHT)
     )
     screen.blit(bg_image, (0, 0))
 
-    # Bilder für die Buttons
     start_n = load_image("data/Buttons/start0.png")
     start_h = load_image("data/Buttons/start1.png")
     options_button = load_image("data/Buttons/Options.png")
 
-    # Skalieren der Buttons
     start_n = pygame.transform.scale(start_n, (150, 60))
     start_h = pygame.transform.scale(start_h, (150, 60))
     options_button = pygame.transform.scale(options_button, (150, 60))
 
-    # Button-Positionen
     start_rect = start_n.get_rect(center=(WIDTH // 2, HEIGHT // 2 - 50))
     options_rect = options_button.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 50))
 
-    # Anzeige der Buttons
     screen.blit(start_n, start_rect)
     screen.blit(options_button, options_rect)
 
@@ -95,16 +90,13 @@ player_image = load_image("data/Hero/Idle/0.png")
 
 
 def options_screen():
-    # Hintergrundbild laden
     bg_image = pygame.transform.scale(
         load_image(f"data/Background/9.png"), (WIDTH, HEIGHT)
     )
     screen.blit(bg_image, (0, 0))
 
-    # Schriftart für den Text
     font = pygame.font.Font(None, 36)
 
-    # Bilder für die Tasten
     key_images = {
         "W": load_image("data/Buttons/W.png"),
         "A": load_image("data/Buttons/A.png"),
@@ -116,7 +108,6 @@ def options_screen():
         "LMB": pygame.transform.scale(load_image("data/Buttons/LMB.png"), (60, 60)),
     }
 
-    # Textbeschreibungen für die Tasten
     key_descriptions = {
         "W": "Move Up",
         "A": "Move Left",
@@ -128,7 +119,6 @@ def options_screen():
         "LMB": "Attack",
     }
 
-    # Positionen für die Tasten und Beschreibungen
     key_positions = {
         "W": (500, 50 * 1),
         "A": (500, 50 * 2),
@@ -140,49 +130,41 @@ def options_screen():
         "LMB": (500 - 20, 50 * 8),
     }
 
-    # Back-Button laden und positionieren
     back_button = pygame.transform.scale(load_image("data/Buttons/Back.png"), (100, 50))
     back_rect = back_button.get_rect(bottomright=(WIDTH - 20, HEIGHT - 20))
 
     while True:
-        # Hintergrund zeichnen
         screen.blit(bg_image, (0, 0))
 
-        # Tasten und Beschreibungen zeichnen
         for key, pos in key_positions.items():
             screen.blit(key_images[key], pos)
             text = font.render(key_descriptions[key], True, (0, 0, 0))
             screen.blit(text, (pos[0] + 60, pos[1] + 10))
 
-        # Back-Button zeichnen
         screen.blit(back_button, back_rect)
 
-        # Mausposition und Klicks überprüfen
         mouse_x, mouse_y = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()
 
-        # Überprüfen, ob der Back-Button geklickt wurde
         if mouse_pressed[0] and back_rect.collidepoint(mouse_x, mouse_y):
-            start_screen()  # Zurück zum Startbildschirm
+            start_screen() 
 
-        # Ereignisse verarbeiten
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 terminate()
 
-        # Bildschirm aktualisieren
         pygame.display.flip()
 
 
 class Tile(pygame.sprite.Sprite):
     def __init__(self, tile_type, pos_x, pos_y):
         super().__init__(tiles_group, all_sprites)
-        if tile_type == "N":  # Unsichtbare Barriere
+        if tile_type == "N": 
             self.image = pygame.Surface(
                 (TILE_SIZE, TILE_SIZE), pygame.SRCALPHA
-            )  # Unsichtbar
+            ) 
             self.rect = self.image.get_rect().move(TILE_SIZE * pos_x, TILE_SIZE * pos_y)
-            wall_group.add(self)  # Zur Kollisionsgruppe hinzufügen
+            wall_group.add(self) 
         else:
             self.image = tile_images[tile_type]
             self.rect = self.image.get_rect().move(TILE_SIZE * pos_x, TILE_SIZE * pos_y)
@@ -230,7 +212,7 @@ class Player(pygame.sprite.Sprite):
 
         if self.health <= 0 and not self.is_dead:
             self.is_dead = True
-            self.dead_animation_frame = 0  # Starte die Todesanimation
+            self.dead_animation_frame = 0
             return
         if not self.can_move:
             return
@@ -324,9 +306,8 @@ class Player(pygame.sprite.Sprite):
         self.dead_animation_frame += self.dead_animation_speed
         if self.dead_animation_frame >= len(self.dead_images):
             self.dead_animation_frame = len(self.dead_images) - 1
-            # Warte 2 Sekunden, bevor der Game-Over-Bildschirm angezeigt wird
             pygame.time.wait(2000)
-            game_over_screen()  # Zeige den Game-Over-Bildschirm
+            game_over_screen() 
         self.image = self.dead_images[int(self.dead_animation_frame)]
 
     def take_damage(self, amount):
@@ -710,7 +691,6 @@ def draw_scrollbar(screen, trader, total_items, item_spacing):
     )
 
 
-# Funktion zum Anzeigen von Nachrichten
 def show_message(screen, message):
     font = pygame.font.Font(None, 36)
     text = font.render(message, True, (255, 0, 0))
@@ -756,7 +736,6 @@ def game_over_screen():
     )
     screen.blit(bg_image, (0, 0))
 
-    # Restart-Button laden
     restart_button = pygame.transform.scale(
         load_image("data/Buttons/Restart.png"), (150, 60)
     )
@@ -766,13 +745,11 @@ def game_over_screen():
         screen.blit(bg_image, (0, 0))
         screen.blit(restart_button, restart_rect)
 
-        # Mausposition und Klicks überprüfen
         mouse_x, mouse_y = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()
 
-        # Überprüfen, ob der Restart-Button geklickt wurde
         if mouse_pressed[0] and restart_rect.collidepoint(mouse_x, mouse_y):
-            start_screen()  # Zurück zum Startbildschirm
+            start_screen() 
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -793,7 +770,7 @@ def game_loop():
             elif event.type == pygame.KEYDOWN:
                 if (
                     event.key == pygame.K_e and not player.is_dead
-                ):  # Nur wenn der Spieler nicht tot ist
+                ):
                     for trader in traider_group:
                         distance_to_player = (
                             (trader.rect.x - player.rect.x) ** 2
@@ -804,13 +781,13 @@ def game_loop():
                             player.can_move = False
                 elif (
                     event.key == pygame.K_ESCAPE and not player.is_dead
-                ):  # Nur wenn der Spieler nicht tot ist
+                ):
                     for trader in traider_group:
                         if trader.in_dialog:
                             trader.end_dialog()
                             player.can_move = True
 
-        if not player.is_dead:  # Nur wenn der Spieler nicht tot ist
+        if not player.is_dead: 
             is_shift_pressed = keys[pygame.K_LSHIFT] or keys[pygame.K_RSHIFT]
             is_moving = (
                 keys[pygame.K_w]

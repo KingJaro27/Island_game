@@ -135,7 +135,7 @@ class Player(pygame.sprite.Sprite):
                 self.current_animation = "attack"
                 self.animation_frame = 0
                 self.attack_in_progress = True
-                self.check_attack()  # Überprüfen, ob ein Gegner in der Nähe ist
+                self.check_attack()
 
             self.mouse_was_pressed = is_attacking
 
@@ -228,12 +228,12 @@ class Enemy1(pygame.sprite.Sprite):
         self.is_attacking = False
         self.is_dead = False
         self.facing_right = True
-        self.death_timer = 0  # Timer für das Entfernen des Gegners nach dem Tod
+        self.death_timer = 0
 
     def update(self, player):
         if self.is_dead:
-            self.death_timer += 1 / FPS  # Timer aktualisieren
-            if self.death_timer >= 2:  # Nach 2 Sekunden entfernen
+            self.death_timer += 1 / FPS
+            if self.death_timer >= 2: 
                 self.kill()
             return
 
@@ -340,12 +340,12 @@ class Enemy2(pygame.sprite.Sprite):
         self.is_attacking = False
         self.is_dead = False
         self.facing_right = True
-        self.death_timer = 0  # Timer für das Entfernen des Gegners nach dem Tod
+        self.death_timer = 0 
 
     def update(self, player):
         if self.is_dead:
-            self.death_timer += 1 / FPS  # Timer aktualisieren
-            if self.death_timer >= 2:  # Nach 2 Sekunden entfernen
+            self.death_timer += 1 / FPS 
+            if self.death_timer >= 2: 
                 self.kill()
             return
 
@@ -516,7 +516,6 @@ def game_over_screen():
 def reset_game():
     global all_sprites, tiles_group, wall_group, player_group, enemy_group, key_group, door_group
 
-    # Alle Gruppen leeren
     all_sprites.empty()
     tiles_group.empty()
     wall_group.empty()
@@ -524,8 +523,6 @@ def reset_game():
     enemy_group.empty()
     key_group.empty()
     door_group.empty()
-
-    # Spiel neu starten
     game_loop()
 
 
@@ -560,7 +557,7 @@ def generate_level(level):
 
 def game_loop():
     player = generate_level(load_level("map.txt"))
-    camera = Camera()  # Kamera initialisieren
+    camera = Camera()
     running = True
     while running:
         keys = pygame.key.get_pressed()
